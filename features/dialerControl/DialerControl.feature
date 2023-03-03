@@ -2,7 +2,7 @@
 Feature: Dialer Control
 
     Background: Login
-        Given User login to the platform as 'admin'
+        Given User login to the platform as 'Supervisor_2'
         Then clean active calls
         And user delete the stored database
         And let user reset the database
@@ -1385,3 +1385,52 @@ Feature: Dialer Control
         Then user navigates to Dialer rules manager tab
         And reset dialer rule setting
         And user clicks the finish button
+
+    @5701
+    Scenario: Power dial: Ratio 1 - sort by outcome - rule with all 8 phones valid - phone numbers in non-sequential order
+        When user navigates to dialer
+        Then select the dialer type 'power'
+        Then user navigates to Dialer rules manager tab
+        And user configure the folllowing rule:
+            | dialerName     | Rule_1          |
+            | phone          | 2,1,5,8,7,4,6,3 |
+            | startHour      | 09:00           |
+            | endHour        | 18:00           |
+            | maxDialerTries | 2               |
+        Then user click on the recycle button 'first' time
+        When user set the following values in the recycle form:
+            | callOutcome | recycleInterval | maxTries |
+            | Busy        | 1m              | 3        |
+        And user clicks the finish button
+        When Navigate to Database Manager
+        And Create Database
+            | browseFile                 | databaseCampaign | optionName | phone                                                | phoneID         |
+            | fixtures/database_5702.csv | 1                | 0          | first,second,third,fourth,fifth,sixth,seventh,eighth | 2,1,5,8,7,4,6,3 |
+        Then load the database
+            | browseFile                 | numOfColumnsToUpload | databaseCampaign | optionName | phone                                                | phoneID         |
+            | fixtures/database_5702.csv | 1                    | 1                | 0          | first,second,third,fourth,fifth,sixth,seventh,eighth | 2,1,5,8,7,4,6,3 |
+        When user navigates to dialer control menu
+        Then user choose the following configurations in dialer control menu:
+            | campaign             | OutboundCampaign_1   |
+            | sortContactsPriority | By outcome and field |
+            | ratio                | 1                    |
+        And login to Voice Channel with '100' extension
+        And user selects 'OutboundCampaign_1' campaign
+        Then user state should be 'ready'
+        Then let user wait for '250' seconds
+        When user navigate to crm
+        And user search the call by using following configurations:
+            | channel   | Outbound           |
+            | campaigns | OutboundCampaign_1 |
+            | database  | 0                  |
+            | agents    | no                 |
+        And validate that the call is registered as per following configurations:
+            | phoneNumber | 990000002          |
+            | callOutcome | Network Failure    |
+            | agentName   | Dialer             |
+            | owner       | OutboundCampaign_1 |
+            | termReason  | DIALER             |
+            | subtype     | alt-dial           |
+        When Navigate to Database Manager
+        Then user click the previously created DB
+        And user validate that all contacts are closed by 'Closed'
